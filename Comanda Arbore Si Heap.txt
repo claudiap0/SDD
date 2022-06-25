@@ -1,0 +1,252 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+//timp start 6:30
+
+#include <stdio.h>
+#include <malloc.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct Comanda
+{
+	int id_comanda;
+	int timp_livrare;
+	int cod_client;
+	char* numeClient;
+};
+
+void afisareComanda(Comanda c)
+{
+	printf("ID = %d, Timp Livrare = %d, Cod Client = %d, Nume Client = %s\n",
+		c.id_comanda,
+		c.timp_livrare,
+		c.cod_client,
+		c.numeClient);
+
+
+}
+
+struct nodArb
+{
+	Comanda info;
+	nodArb* left;
+	nodArb* right;
+};
+
+nodArb* adaugareNod(nodArb* rad, Comanda c)
+{
+	if (rad)
+	{
+		if (rad->info.id_comanda > c.id_comanda)
+			rad->left = adaugareNod(rad->left, c);
+		else
+			rad->right = adaugareNod(rad->right, c);
+		return rad;
+	}
+	else
+	{
+		nodArb* nou = (nodArb*)malloc(sizeof(nodArb));
+		nou->info.id_comanda = c.id_comanda;
+		nou->info.timp_livrare = c.timp_livrare;
+		nou->info.cod_client = c.cod_client;
+
+		nou->info.numeClient = (char*)malloc(sizeof(char) * (strlen(c.numeClient) + 1));
+		strcpy(nou->info.numeClient, c.numeClient);
+
+		nou->left = NULL;
+		nou->right = NULL;
+
+		return nou;
+	}
+}
+
+nodArb* citireDinFisier(FILE* f)
+{
+	nodArb* rad = NULL;
+	char buffer[100];
+	int dimensiune = 0;
+	fscanf(f, "%d", &dimensiune);
+	fgets(buffer, 100, f);
+	for (int i = 0; i < dimensiune; i++)
+	{
+		Comanda c;
+		fgets(buffer, 100, f);
+
+		strtok(buffer, ",");
+		c.id_comanda = atoi(buffer);
+
+		strcpy(buffer, strtok(NULL, ","));
+		c.timp_livrare = atoi(buffer);
+
+		strcpy(buffer, strtok(NULL, ","));
+		c.cod_client = atoi(buffer);
+
+		strcpy(buffer, strtok(NULL, ","));
+		strtok(buffer, "\n");
+		c.numeClient = (char*)malloc(sizeof(char) * (strlen(buffer) + 1));
+		strcpy(c.numeClient, buffer);
+
+		rad = adaugareNod(rad, c);
+	}
+
+	return rad;
+}
+
+void afisareInOrdine(nodArb* rad)
+{
+	if (rad)
+	{
+		
+		afisareInOrdine(rad->left);
+		afisareComanda(rad->info);
+		afisareInOrdine(rad->right);
+	}
+}
+
+struct heap
+{
+	Comanda** vect;
+	int nrElemente;
+};
+
+void filtrare(heap h, int index)
+{
+	int indexMax = index;
+	int indexSt = index * 2 + 1;
+	int indexDr = index * 2 + 2;
+
+	if (indexSt < h.nrElemente && h.vect[indexSt]->id_comanda > h.vect[indexMax]->id_comanda)
+	{
+		indexMax = indexSt;
+	}
+	if (indexDr < h.nrElemente && h.vect[indexDr]->id_comanda > h.vect[indexMax]->id_comanda)
+	{
+		indexMax = indexDr;
+	}
+
+	if (index != indexMax)
+	{
+		Comanda* temp = h.vect[index];
+		h.vect[index] = h.vect[indexMax];
+		h.vect[indexMax] = temp;
+
+		filtrare(h, indexMax);
+	}
+}
+
+void inserareHeap(heap* h, Comanda c)
+{
+	// Sa nu partajam zona de memorie creeam o comanda nou
+	Comanda* comanda = (Comanda*)malloc(sizeof(Comanda));
+	comanda->id_comanda = c.id_comanda;
+	comanda->timp_livrare = c.timp_livrare;
+	comanda->cod_client = c.cod_client;
+
+	comanda->numeClient = (char*)malloc(sizeof(char) * (strlen(c.numeClient) + 1));
+	strcpy(comanda->numeClient, c.numeClient);
+
+	// creeam o lista de adrese la comanda auxiliara in care sa salvam elemetele deja existente si dupa le copiem
+	Comanda** nouComenzi = (Comanda**)malloc(sizeof(Comanda*) * (h->nrElemente + 1) );
+	for (int i = 0; i < h->nrElemente; i++)
+		nouComenzi[i] = h->vect[i];
+
+	// dezalocam vechea lista si o inlocuim cu cea nou dupa care incremenentam numarul de elemente si adaugam la final comanda
+	h->nrElemente++;
+	free(h->vect);
+	h->vect = nouComenzi;   
+
+	h->vect[h->nrElemente - 1] = comanda;
+
+	// dupa inserare filtram elementele
+	for (int i = (h->nrElemente - 1) / 2; i >= 0; i--)  
+		filtrare(*h, i);
+
+}
+
+heap* conversieHeap(nodArb* rad, heap* h)
+{
+
+
+	if (rad)
+	{
+		inserareHeap(h, rad->info);
+
+		conversieHeap(rad->left, h);
+		
+		conversieHeap(rad->right, h);
+	}
+
+	return h;
+}
+
+
+// la extragere facem opusul la inserare; este ** pentru a se trimite schimbarea adresei
+void extragere(heap* h, Comanda** c)
+{
+	Comanda** nouComenzi = (Comanda**)malloc(sizeof(Comanda*) * (h->nrElemente + 1));
+
+
+	Comanda* temp = h->vect[0];
+	h->vect[0] = h->vect[h->nrElemente - 1];
+	h->vect[h->nrElemente - 1] = temp;
+
+	*c = h->vect[h->nrElemente - 1];
+
+	for (int i = 0; i < h->nrElemente - 1; i++)
+		nouComenzi[i] = h->vect[i];
+
+	h->nrElemente--;
+	free(h->vect);
+	h->vect = nouComenzi;
+
+	for (int i = (h->nrElemente - 1) / 2; i >= 0; i--)
+		filtrare(*h, i);
+}
+
+void dezalocareHeap()
+{
+
+}
+
+void main()
+{
+	FILE* f;
+	f = fopen("Text.txt", "r");
+
+	nodArb* rad = NULL;
+	rad = citireDinFisier(f);
+
+	afisareInOrdine(rad);
+
+
+
+	heap* structuraHeap = NULL;
+	structuraHeap = (heap*)malloc(sizeof(heap));
+	structuraHeap->nrElemente = 0;
+	structuraHeap->vect = (Comanda**)malloc(sizeof(Comanda*) * (structuraHeap->nrElemente));
+	structuraHeap = conversieHeap(rad, structuraHeap);
+
+
+	printf("\n Afisare Structura Heap \n");
+	for (int i = 0; i < structuraHeap->nrElemente; i++)
+	{
+		afisareComanda(*(structuraHeap->vect[i]));
+	}
+
+	Comanda* c = (Comanda*)malloc(sizeof(Comanda));
+	extragere(structuraHeap, &c);
+
+	printf("\n Afisare Structura Heap \n");
+	for (int i = 0; i < structuraHeap->nrElemente; i++)
+	{
+		afisareComanda(*(structuraHeap->vect[i]));
+	}
+
+	printf("\n Comanda Extrasa \n");
+	afisareComanda(*c);
+
+	fclose(f);
+
+
+
+}

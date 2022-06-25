@@ -1,0 +1,264 @@
+# define _CRT_SECURE_NO_WARNINGS
+
+// start 11:15
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <malloc.h>
+
+struct Angajat
+{
+	unsigned int cod_departament;
+	char* numeAngajat;
+
+};
+
+void afisareAngajat(Angajat a)
+{
+	printf("Departament = %d, Nume = %s\n", a.cod_departament, a.numeAngajat);
+}
+
+
+
+struct nodCoada
+{
+	Angajat inf;
+	nodCoada* next;
+};
+
+nodCoada* creareNodCoada(nodCoada* next, Angajat a)
+{
+	nodCoada* nou = (nodCoada*)malloc(sizeof(nodCoada));
+	
+	nou->inf.cod_departament = a.cod_departament;
+
+	nou->inf.numeAngajat = (char*)malloc(sizeof(char) * (strlen(a.numeAngajat) + 1));
+	strcpy(nou->inf.numeAngajat, a.numeAngajat);
+
+	nou->next = next;
+
+	return nou;
+}
+
+struct Coada
+{
+	nodCoada* first;
+	nodCoada* last;
+};
+
+Coada* put(Coada* coada, Angajat a)
+{
+	if (!coada)
+	{
+		coada = (Coada*)malloc(sizeof(Coada));
+		coada->first = NULL;
+		coada->last = NULL;
+	}
+	nodCoada* nou = creareNodCoada(NULL, a);
+	if (coada->last)
+	{
+		coada->last->next = nou;
+		coada->last = nou;
+
+
+	}
+	else
+	{
+		coada->first = nou;
+		coada->last = nou;
+
+		return coada;
+	}
+
+
+
+}
+
+Coada* citireDinFisier(FILE* f)
+{
+	Coada* coada = NULL;
+	char buffer[50];
+	int dimensiune = 0;
+	fscanf(f, "%d", &dimensiune);
+	fgets(buffer, 50, f);
+
+	for (int i = 0; i < dimensiune; i++)
+	{
+		Angajat a;
+
+		fgets(buffer, 50, f);
+		strtok(buffer, ",");
+
+		a.cod_departament = atoi(buffer);
+
+		strcpy(buffer, strtok(NULL, ","));
+		strtok(buffer, "\n");
+
+		a.numeAngajat = (char*)malloc(sizeof(char) * (strlen(buffer) + 1));
+		strcpy(a.numeAngajat, buffer);
+
+		coada = put(coada, a);
+
+
+
+	}
+
+	return coada;
+}
+
+void traversareCoada(Coada* coada)
+{
+	nodCoada* temp = coada->first;
+	while (temp)
+	{
+		afisareAngajat(temp->inf);
+		temp = temp->next;
+	}
+}
+
+Angajat get(Coada* c)
+{
+	if (c)
+	{
+		Angajat a;
+		
+		a.cod_departament = c->first->inf.cod_departament;
+
+		a.numeAngajat = (char*)malloc(sizeof(char) * (strlen(c->first->inf.numeAngajat) + 1));
+		strcpy(a.numeAngajat, c->first->inf.numeAngajat);
+
+		nodCoada* temp = c->first;
+		c->first = c->first->next;
+		free(temp->inf.numeAngajat);
+		free(temp);
+
+		return a;
+	}
+}
+
+struct nodStiva
+{
+	Angajat inf;
+	nodStiva* next;
+};
+
+nodStiva* push(nodStiva* nod, Angajat a)
+{
+	if (nod)
+	{
+		nodStiva* nou = (nodStiva*)malloc(sizeof(nodStiva));
+
+		nou->inf.cod_departament = a.cod_departament;
+
+		nou->inf.numeAngajat = (char*)malloc(sizeof(char) * (strlen(a.numeAngajat) + 1));
+		strcpy(nou->inf.numeAngajat, a.numeAngajat);
+
+
+		nou->next = nod;
+		nod = nou;
+
+		return nod;
+
+	}
+	else
+	{
+		nodStiva* nou = (nodStiva*)malloc(sizeof(nodStiva));
+
+		nou->inf.cod_departament = a.cod_departament;
+
+		nou->inf.numeAngajat = (char*)malloc(sizeof(char) * (strlen(a.numeAngajat) + 1));
+		strcpy(nou->inf.numeAngajat, a.numeAngajat);
+
+		nou->next = NULL;
+
+		return nou;
+	}
+}
+
+nodStiva* pop(nodStiva* stiva, Angajat* a)
+{
+	if (stiva)
+	{
+		
+		a->cod_departament = stiva->inf.cod_departament;
+
+		a->numeAngajat = (char*)malloc(sizeof(char) * (strlen(stiva->inf.numeAngajat) + 1));
+		strcpy(a->numeAngajat, stiva->inf.numeAngajat);
+
+		nodStiva* temp = stiva;
+		stiva = stiva->next;
+		free(temp->inf.numeAngajat);
+		free(temp);
+
+		return stiva;
+	}
+}
+
+void traversareStiva(nodStiva* stiva)
+{
+	nodStiva* temp = stiva;
+	while (temp)
+	{
+		afisareAngajat(temp->inf);
+		temp = temp->next;
+	}
+}
+
+nodStiva* conversieCoadaInStiva(Coada* coada)
+{
+	nodStiva* nou = NULL;
+	nodCoada* temp = coada->first;
+	while (temp)
+	{
+		nou = push(nou, temp->inf);
+		temp = temp->next;
+	}
+
+
+	return nou;
+}
+
+void main()
+{
+	FILE* f;
+
+	f = fopen("Text.txt", "r");
+
+	Coada* coada = NULL;
+	coada = citireDinFisier(f);
+
+	traversareCoada(coada);
+
+
+
+	Angajat a;
+	a = get(coada);
+	printf("\nAngajat extras\n");
+	afisareAngajat(a);
+	printf("\n");
+
+	printf("\nDupa extragere\n");
+	traversareCoada(coada);
+
+
+
+	printf("\nStiva\n");
+	nodStiva* stiva;
+	stiva = conversieCoadaInStiva(coada);
+	traversareStiva(stiva);
+
+	Angajat ang;
+	stiva = pop(stiva, &ang);
+	printf("\nAngajat extras\n");
+	afisareAngajat(ang);
+	printf("\n");
+
+	printf("\nDupa extragere\n");
+	traversareStiva(stiva);
+
+	fclose(f);
+
+
+	printf("\nFinalizat");
+}

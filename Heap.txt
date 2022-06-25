@@ -1,0 +1,221 @@
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+enum reservation_type {
+    PHONE_CALL = 1, MOBILE_APP
+};
+
+const char* typeConversion(reservation_type m)
+{
+    if (m == 1)
+        return "PHONE_CALL";
+    if (m == 2)
+        return "MOBILE_APP";
+}
+
+struct reservation {
+    int client_id;
+    char* phoneNumber;
+    int reservation_duration;
+    reservation_type m;
+};
+
+struct heap {
+    reservation* rez_array;
+    int number_of_records;
+};
+
+void filter(heap h, int index) {
+    int indexRoot = index;
+    int indexLeft = 2 * index + 1;
+    int indexRight = 2 * index + 2;
+
+    if (indexLeft < h.number_of_records && h.rez_array[indexLeft].reservation_duration>h.rez_array[indexRoot].reservation_duration) {
+        indexRoot = indexLeft;
+    }
+    if (indexRight < h.number_of_records && h.rez_array[indexRight].reservation_duration > h.rez_array[indexRoot].reservation_duration) {
+        indexRoot = indexRight;
+    }
+    if (index != indexRoot) {
+        reservation aux = h.rez_array[index];
+        h.rez_array[index] = h.rez_array[indexRoot];
+        h.rez_array[indexRoot] = aux;
+        filter(h, indexRoot);
+    }
+}
+
+heap insertion(heap h, reservation p)
+{
+    reservation* newVector = new reservation[h.number_of_records + 1];
+    for (int i = 0; i < h.number_of_records; i++)
+    {
+        newVector[i] = h.rez_array[i];
+    }
+    newVector[h.number_of_records] = p;
+    delete[]h.rez_array;
+    h.number_of_records++;
+    h.rez_array = newVector;
+    for (int i = (h.number_of_records - 1) / 2; i >= 0; i--)
+    {
+        filter(h, i);
+    }
+    return h;
+}
+
+void displayReservations(heap h)
+{
+    for (int i = 0; i < h.number_of_records; i++)
+    {
+        cout << "Reservation Duration(hours): " << h.rez_array[i].reservation_duration << " Client ID:  " << h.rez_array[i].client_id << " Phone NUMBER: "
+            << h.rez_array[i].phoneNumber << " Reservation Type: " << typeConversion(h.rez_array[i].m) << endl;
+
+    }
+}
+
+reservation* checkTime(heap* h, int* count) {
+    reservation* aux = new reservation[h->number_of_records];
+    if (h != nullptr) {
+        for (int i = 0; i < h->number_of_records; i++) {
+            if (h->rez_array[i].reservation_duration >= 3) {
+                aux[*count] = (h->rez_array[i]);
+                (*count)++;
+            }
+        }
+
+        return aux;
+    }
+}
+
+
+heap extraction(heap h, reservation* p)
+{
+    reservation* newVector = new reservation[h.number_of_records - 1];
+    reservation aux = h.rez_array[0];
+    h.rez_array[0] = h.rez_array[h.number_of_records - 1];
+    h.rez_array[h.number_of_records - 1] = aux;
+    *p = h.rez_array[h.number_of_records - 1];
+    h.number_of_records--;
+    for (int i = 0; i < h.number_of_records; i++)
+    {
+        newVector[i] = h.rez_array[i];
+    }
+    delete[]h.rez_array;
+    h.rez_array = newVector;
+    for (int i = (h.number_of_records - 1) / 2; i >= 0; i--)
+    {
+        filter(h, i);
+    }
+    return h;
+}
+
+void raportGeneration(heap* h, int valoare) {
+    ofstream of("raport.txt");
+    if (h != nullptr) {
+        for (int i = 0; i < h->number_of_records; i++) {
+            if (h->rez_array[i].client_id == valoare) {
+                of << "Reservation Duration(hours): ";
+                of << h->rez_array[i].reservation_duration;
+                of << " Client ID: ";
+                of << h->rez_array[i].client_id;
+                of << " Phone Number: ";
+                of << h->rez_array[i].phoneNumber;
+                of << " Reservation Type: ";
+                of << typeConversion(h->rez_array[i].m);
+                of << "\n";
+            }
+        }
+    }
+    of.close();
+}
+
+
+void dezalocare(heap tail)
+{
+    for (int i = 0; i < tail.number_of_records; i++)
+    {
+        delete[] tail.rez_array[i].phoneNumber;
+    }
+    delete[] tail.rez_array;
+}
+
+
+
+void main()
+{
+    heap heap1;
+    char buffer[20];
+    ifstream file("file.txt");
+    file >> heap1.number_of_records;
+    // Citire din fisier reservari
+    heap1.rez_array = new reservation[heap1.number_of_records];
+    for (int i = 0; i < heap1.number_of_records; i++) {
+        file >> heap1.rez_array[i].reservation_duration;
+        file >> heap1.rez_array[i].client_id;
+        file >> buffer;
+        heap1.rez_array[i].phoneNumber = new char[strlen(buffer) + 1];
+        strcpy_s(heap1.rez_array[i].phoneNumber, strlen(buffer) + 1, buffer);
+        int bufferINT;
+        file >> bufferINT;
+        heap1.rez_array[i].m = (reservation_type)bufferINT;
+    }
+    file.close();
+    for (int i = (heap1.number_of_records - 1) / 2; i >= 0; i--)
+    {
+        filter(heap1, i);
+    }
+    cout << "Display with information from file: \n";
+    displayReservations(heap1);
+    cout << endl;
+    cout << endl;
+
+    // Creare nou obiect de tip rezervare pentru a fi inserat in aplicatie
+    cout << "Display after inseration:\n ";
+    reservation rez1;
+    rez1.phoneNumber = new char[strlen("0786283085") + 1];
+    rez1.client_id = 4;
+    rez1.reservation_duration = 1;
+    strcpy_s(rez1.phoneNumber, sizeof("0786283085"), "0786283085");
+    rez1.m = (reservation_type)2;
+    heap1 = insertion(heap1, rez1);
+    displayReservations(heap1);
+    cout << endl;
+    cout << endl;
+
+    // Cream un vector pentru a gasii rezervarile care au durata mai mare decat 3 sa vedem cate rezervari sunt gasite
+    cout << "\nWriting in a file reservations with more than three hours \n" << endl;
+    int rezCount = 0;
+    ofstream fileWrite("ReservationsWithMoreThanThreeHours.txt");
+    reservation* arrayA = checkTime(&heap1, &rezCount);
+    for (int i = 0; i < rezCount; i++)
+    {
+        fileWrite << "Reservation Duration(hours): ";
+        fileWrite << arrayA[i].reservation_duration;
+        fileWrite << " Client ID: ";
+        fileWrite << arrayA[i].client_id;
+        fileWrite << " Phone NUMBER: ";
+        fileWrite << arrayA[i].phoneNumber;
+        fileWrite << " Reservation Type: ";
+        fileWrite << typeConversion(arrayA[i].m);
+        fileWrite << "\n";
+
+    }
+    fileWrite.close();
+
+    // Extragem o rezervare
+    heap1 = extraction(heap1, arrayA);
+    cout << "\nThe extracted reservations had : " << arrayA->reservation_duration << " hours" << endl << endl;
+    displayReservations(heap1);
+
+
+    // Introducem ID-ul unui client caruia vrem sa ii veedem rezervarile
+    int val;
+    cout << "\nIntroduce the ID of the client you want to see all his reservations as a raport: ";
+    cin >> val;
+    raportGeneration(&heap1, val);
+    cout << "\nThe raport was created.\n\n\n";
+
+    //Dezalocari program
+    delete[] arrayA;
+    dezalocare(heap1);
+}

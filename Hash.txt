@@ -1,0 +1,167 @@
+#define _CRT_SECURE_NO_WARNINGS
+
+#include <stdio.h>
+#include <string.h>
+#include <corecrt_malloc.h>
+
+struct magazin
+{
+    unsigned char numar_magazine;
+    float stocuri_magazine;
+    char* denumire_magazin;
+};
+
+struct hashT
+{
+    magazin** vector;
+    int size;
+};
+
+int functieHash(unsigned char cheie, hashT h)
+{
+    return cheie % h.size;
+}
+
+struct nod
+{
+    magazin m;
+    nod* next;
+};
+
+nod inserareNod(magazin m, nod nLista)
+{
+
+    return nLista;
+}
+
+int inserare(hashT tabela, magazin* m)
+{
+    int pozitie;
+    if (tabela.vector != NULL)
+    {
+        pozitie = functieHash((*m).numar_magazine, tabela);
+        if (tabela.vector[pozitie] == NULL)
+            tabela.vector[pozitie] = m;
+        else
+        {
+            int index = 1;
+            while (pozitie + index < tabela.size)
+            {
+
+                if (tabela.vector[pozitie + index] == NULL)
+                {
+                    tabela.vector[pozitie + index] = m;
+                    pozitie += index;
+                    break;
+                }
+                index++;
+            }
+        }
+    }
+    return pozitie;
+}
+
+void traversare(hashT tabela)
+{
+    for (int i = 0; i < tabela.size; i++)
+    {
+
+        if (tabela.vector[i] != NULL)
+        {
+            printf("Pozitia %d\n", i);
+            printf("Numar_magazin=%d Stocuri=%5.2f Denumire=%s\n", tabela.vector[i]->numar_magazine, tabela.vector[i]->stocuri_magazine, tabela.vector[i]->denumire_magazin);
+        }
+    }
+}
+
+int ValoriClustere(hashT tabela, int vectorValori[])
+{
+    int dimCluster = 0;
+    int indexVector = -1;
+    int valHash = -1;
+    for (int i = 0; i < tabela.size; i++)
+    {
+        if (tabela.vector[i] != NULL && valHash == functieHash(tabela.vector[i]->numar_magazine, tabela) && dimCluster > 0)
+        {
+            dimCluster += 1;
+        }
+
+        if (tabela.vector[i] != NULL && valHash != functieHash(tabela.vector[i]->numar_magazine, tabela) && dimCluster == 0)
+        {
+            dimCluster += 1;
+            valHash = functieHash(tabela.vector[i]->numar_magazine, tabela);
+        }
+
+
+        if (tabela.vector[i] == NULL && dimCluster > 0)
+        {
+            
+            indexVector++;
+            vectorValori[indexVector] = dimCluster;
+            dimCluster = 0;
+            valHash = -1;
+        }
+
+        if (tabela.vector[i] != NULL && valHash != functieHash(tabela.vector[i]->numar_magazine, tabela) && dimCluster > 0)
+        {
+            indexVector++;
+            vectorValori[indexVector] = dimCluster;
+            dimCluster = 1;
+            valHash = functieHash(tabela.vector[i]->numar_magazine, tabela);
+        }
+    }
+    return indexVector;
+
+
+}
+
+void main()
+{
+    magazin* m;
+    char buffer[50];
+
+    hashT tabela;
+    tabela.size = 101;
+    tabela.vector = (magazin**)malloc(sizeof(magazin*) * tabela.size);
+    for (int i = 0; i < tabela.size; i++)
+        tabela.vector[i] = NULL;
+
+
+    FILE* file;
+
+    file = fopen("Magazine.txt", "r");
+
+    int dimensiune;
+    fscanf(file, "%d", &dimensiune);
+    for (int i = 0; i < dimensiune; i++)
+    {
+        m = (magazin*)malloc(sizeof(magazin));
+
+        fscanf(file, "%d", &m->numar_magazine);
+        fscanf(file, "%f", &m->stocuri_magazine);
+        fgets(buffer, sizeof(buffer), file);
+        strtok(buffer, "\n");
+        m->denumire_magazin = (char*)malloc(sizeof(char) * (strlen(buffer) + 1));
+        strcpy(m->denumire_magazin, buffer);
+
+        inserare(tabela, m);
+
+
+
+
+    }
+
+    traversare(tabela);
+
+    int valori[100] = { 0 };
+    int dimesiune = ValoriClustere(tabela, valori);
+
+    for (int i = 0; i <= dimesiune; i++)
+    {
+        printf("Cluester %d are dimensiunea %d \n", i+1, valori[i]);
+    }
+    
+
+
+
+}

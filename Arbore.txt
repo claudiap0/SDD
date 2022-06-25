@@ -1,0 +1,298 @@
+#include <iostream>
+#include <fstream>
+using namespace std;
+
+struct angajat {
+	char* numeAngajat;
+	unsigned int marca;
+	char* departament;
+	unsigned int notaEvaluare;
+	char* dataEvaluare;
+};
+struct nodArb {
+	int BF;
+	angajat inf;
+	nodArb* stanga;
+	nodArb* dreapta;
+};
+nodArb* creareNod(angajat a, nodArb* st, nodArb* dr)
+{
+	nodArb* nou = new nodArb;
+	nou->inf.numeAngajat = new char[strlen(a.numeAngajat) + 1];
+	strcpy_s(nou->inf.numeAngajat, strlen(a.numeAngajat) + 1, a.numeAngajat);
+	nou->inf.marca = a.marca;
+	nou->inf.departament = new char[strlen(a.departament) + 1];
+	strcpy_s(nou->inf.departament, strlen(a.departament) + 1, a.departament);
+	nou->inf.notaEvaluare = a.notaEvaluare;
+	nou->inf.dataEvaluare = new char[strlen(a.dataEvaluare) + 1];
+	strcpy_s(nou->inf.dataEvaluare, strlen(a.dataEvaluare) + 1, a.dataEvaluare);
+
+	nou->stanga = st;
+	nou->dreapta = dr;
+	return nou;
+}
+nodArb* inserareNod(angajat a, nodArb* rad)
+{
+	if (rad != nullptr)
+	{
+		if (a.marca < rad->inf.marca)
+		{
+			rad->stanga = inserareNod(a, rad->stanga);
+			return rad;
+		}
+		else
+			if (a.marca > rad->inf.marca)
+			{
+				rad->dreapta = inserareNod(a, rad->dreapta);
+				return rad;
+			}
+			else
+				return rad;
+	}
+	else
+		return creareNod(a, nullptr, nullptr);
+}
+void traversarePreordine(nodArb* rad) {
+	if (rad != nullptr) {
+		cout << "Nume angajat: " << rad->inf.numeAngajat << " Marca: " << rad->inf.marca << "Departamentul: "
+			<< rad->inf.departament << "Nota evaluare " << rad->inf.notaEvaluare << "Data evaluare" << endl;
+		traversarePreordine(rad->stanga);
+		traversarePreordine(rad->dreapta);
+	}
+}
+int maxim(int a, int b)
+{
+	int max = a;
+	if (max < b)
+		max = b;
+	return max;
+}
+
+int nrNiveluri(nodArb* rad)
+{
+	if (rad != nullptr)
+	{
+		int nrNivSt = nrNiveluri(rad->stanga);
+		int nrNivDr = nrNiveluri(rad->dreapta);
+		return 1 + maxim(nrNivSt, nrNivDr);
+	}
+	else
+		return 0;
+}
+
+void calculBF(nodArb* rad)
+{
+	if (rad != nullptr)
+	{
+		rad->BF = nrNiveluri(rad->dreapta) - nrNiveluri(rad->stanga);
+		calculBF(rad->stanga);
+		calculBF(rad->dreapta);
+	}
+}
+
+nodArb* rotatie_dreapta(nodArb* rad)
+{
+	cout << endl << "Rotatie dreapta!" << endl;
+	nodArb* nod1 = rad->stanga;
+	rad->stanga = nod1->dreapta;
+	nod1->dreapta = rad;
+	rad = nod1;
+	return rad;
+}
+
+nodArb* rotatie_stanga(nodArb* rad)
+{
+	cout << endl << "Rotatie stanga!" << endl;
+	nodArb* nod1 = rad->dreapta;
+	rad->dreapta = nod1->stanga;
+	nod1->stanga = rad;
+	rad = nod1;
+	return rad;
+}
+
+nodArb* rotatie_dreapta_stanga(nodArb* rad)
+{
+	cout << endl << "Rotatie dreapta-stanga!" << endl;
+	nodArb* nod1 = rad->dreapta;
+	nodArb* nod2 = nod1->stanga;
+	nod1->stanga = nod2->dreapta;
+	nod2->dreapta = nod1;
+	rad->dreapta = nod2->stanga;
+	nod2->stanga = rad;
+	rad = nod2;
+	return rad;
+}
+
+nodArb* rotatie_stanga_dreapta(nodArb* rad)
+{
+	cout << endl << "Rotatie stanga-dreapta!" << endl;
+	nodArb* nod1 = rad->stanga;
+	nodArb* nod2 = nod1->dreapta;
+	nod1->dreapta = nod2->stanga;
+	nod2->stanga = nod1;
+	rad->stanga = nod2->dreapta;
+	nod2->dreapta = rad;
+	rad = nod2;
+	return rad;
+}
+
+nodArb* reechilibrare(nodArb* rad)
+{
+	calculBF(rad);
+	if (rad->BF <= -2 && rad->stanga->BF <= -1)
+	{
+		rad = rotatie_dreapta(rad);
+		calculBF(rad);
+	}
+	else
+		if (rad->BF >= 2 && rad->dreapta->BF >= 1)
+		{
+			rad = rotatie_stanga(rad);
+			calculBF(rad);
+		}
+		else
+			if (rad->BF >= 2 && rad->dreapta->BF <= -1)
+			{
+				rad = rotatie_dreapta_stanga(rad);
+				calculBF(rad);
+			}
+			else
+				if (rad->BF <= -2 && rad->stanga->BF >= 1)
+				{
+					rad = rotatie_stanga_dreapta(rad);
+					calculBF(rad);
+				}
+	return rad;
+}
+nodArb* stergeRad(nodArb* rad)
+{
+	nodArb* aux = rad;
+	if (aux->stanga != nullptr)
+	{
+		rad = aux->stanga;
+		if (aux->dreapta != nullptr)
+		{
+			nodArb* temp = aux->stanga;
+			while (temp->dreapta != nullptr)
+				temp = temp->dreapta;
+			temp->dreapta = aux->dreapta;
+		}
+	}
+	else
+		if (aux->dreapta != nullptr)
+			rad = aux->dreapta;
+		else
+			rad = nullptr;
+	delete[] aux->inf.numeAngajat;
+	delete[]aux->inf.departament;
+	delete[]aux->inf.dataEvaluare;
+	delete aux;
+	return rad;
+}
+nodArb* stergeNod(nodArb* rad, int cod)
+{
+	if (rad == nullptr)
+		return nullptr;
+	else
+		if (rad->inf.marca == cod)
+		{
+			rad = stergeRad(rad);
+			return rad;
+		}
+		else
+			if (cod < rad->inf.marca)
+			{
+				rad->stanga = stergeNod(rad->stanga, cod);
+				return rad;
+			}
+			else
+				if (cod > rad->inf.marca)
+				{
+					rad->dreapta = stergeNod(rad->dreapta, cod);
+					return rad;
+				}
+}
+nodArb* stergeDepartDenumire(nodArb* rad, const char* denumire)
+{
+	if (rad != nullptr)
+	{
+		if (strcmp(rad->inf.departament, denumire) == 0)
+		{
+			rad = stergeNod(rad, rad->inf.marca);
+			return rad;
+		}
+		else
+		{
+			rad->stanga = stergeDepartDenumire(rad->stanga, denumire);
+			rad->dreapta = stergeDepartDenumire(rad->dreapta, denumire);
+			return rad;
+		}
+	}
+	else
+		return nullptr;
+}
+void departamenteFrunza(nodArb* rad, angajat vect[], int* nr)
+{
+	if (rad != nullptr)
+	{
+		if (rad->stanga == nullptr && rad->dreapta == nullptr)
+		{
+			vect[*nr] = rad->inf;
+			(*nr)++;
+		}
+		departamenteFrunza(rad->stanga, vect, nr);
+		departamenteFrunza(rad->dreapta, vect, nr);
+	}
+}
+
+
+
+void main() {
+	int n;
+	ifstream fisier;
+	fisier.open("fisier.txt");
+	angajat a;
+	char buffer[20];
+	nodArb* rad = nullptr;
+	fisier >> n;
+	for (int i = 0; i < n; i++) {
+		char buffer[30];
+		fisier >> buffer;
+		a.numeAngajat = new char[strlen(buffer) + 1];
+		strcpy_s(a.numeAngajat, strlen(buffer) + 1, buffer);
+		fisier >> a.marca;
+		fisier >> buffer;
+		a.departament = new char[strlen(buffer) + 1];
+		strcpy_s(a.departament, strlen(buffer) + 1, buffer);
+		fisier >> a.notaEvaluare;
+		fisier >> buffer;
+		a.dataEvaluare = new char[strlen(buffer) + 1];
+		strcpy_s(a.dataEvaluare, strlen(buffer) + 1, buffer);
+
+		rad = inserareNod(a, rad);
+
+		rad = reechilibrare(rad);
+
+		delete[]a.numeAngajat;
+		delete[]a.departament;
+		delete[]a.dataEvaluare;
+	}
+	fisier.close();
+	traversarePreordine(rad);
+	cout << endl;
+
+	rad = stergeDepartDenumire(rad, "PSD");
+	rad = reechilibrare(rad);
+	traversarePreordine(rad);
+
+	cout << endl;
+	angajat vect[100];
+	int nr = 0;
+	departamenteFrunza(rad, vect, &nr);
+	for (int i = 0; i < nr; i++) {
+		cout << "Nume angajat: " << vect[i].numeAngajat << " Marca: " << vect[i].marca << "Departamentul: "
+			<< vect[i].departament << "Nota evaluare " << vect[i].notaEvaluare << "Data evaluare" << endl;
+	}
+
+
+}
